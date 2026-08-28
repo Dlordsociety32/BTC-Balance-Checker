@@ -11,7 +11,7 @@ Visit: https://dlordsociety32.github.io/BTC-Balance-Checker/
 - Using third party BTC Explorer like Memepool for checking full history transactions
 
 ## Privacy:
-- Not saving result of serches for outside server.
+- No saving result of serches for outside server.
 - No Private Keys ever needed or stored. 
 
 ## Your like this project?
