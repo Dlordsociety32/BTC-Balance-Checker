@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC Balance Checker & Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        btc: {
+                            orange: '#F7931A',
+                            gold: '#FFD700',
+                            dark: '#0d1117',
+                            card: '#161b22',
+                            border: '#30363d'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #f7931a;
+            border-radius: 4px;
+        }
+
+        .theme-dark {
+            --bg-main: #0b0f19;
+            --bg-card: #111827;
+            --bg-card-hover: #1f2937;
+            --border-color: #374151;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+            --accent: #f7931a;
+        }
+
+        .theme-light {
+            --bg-main: #f3f4f6;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f9fafb;
+            --border-color: #e5e7eb;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --accent: #d97706;
+        }
+
+        .theme-gold {
+            --bg-main: #12100e;
+            --bg-card: #1c1815;
+            --bg-card-hover: #2a241f;
+            --border-color: #42362b;
+            --text-main: #fef3c7;
+            --text-muted: #d97706;
+            --accent: #f59e0b;
+        }
+
+        .theme-cyberpunk {
+            --bg-main: #050515;
+            --bg-card: #0d0e2e;
+            --bg-card-hover: #181a4d;
+            --border-color: #ff007f;
+            --text-main: #00f0ff;
+            --text-muted: #a78bfa;
+            --accent: #ff007f;
+        }
+
+        .custom-theme-bg { background-color: var(--bg-main); }
+        .custom-theme-card { background-color: var(--bg-card); border-color: var(--border-color); }
+        .custom-theme-text { color: var(--text-main); }
+        .custom-theme-muted { color: var(--text-muted); }
+
+        .glow-effect {
+            box-shadow: 0 0 15px rgba(247, 147, 26, 0.2);
+        }
+        .glow-effect:hover {
+            box-shadow: 0 0 25px rgba(247, 147, 26, 0.4);
+        }
+
+        .drawer-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .drawer-panel {
+            transition: transform 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="theme-dark custom-theme-bg custom-theme-text min-h-screen flex flex-col antialiased">
+
+    <header class="border-b custom-theme-card sticky top-0 z-30 backdrop-blur-md bg-opacity-90">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                    <i class="fa-bold fa-bitcoin text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg sm:text-xl tracking-tight flex items-center gap-2">
+                        BTC <span class="text-amber-500">Checker</span>
+                    </h1>
+                    <p data-i18n="subtitle" class="text-xs custom-theme-muted hidden sm:block">Public Bitcoin Balance Explorer</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <button 
+                    onclick="openDrawer()" 
+                    class="p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition flex items-center gap-2 font-semibold text-xs sm:text-sm">
+                    <i class="fa-solid fa-sliders text-base"></i>
+                    <span data-i18n="menu" class="hidden sm:inline">Menu & Settings</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="border-b custom-theme-card bg-gray-900/40 backdrop-blur-sm py-2 px-4 sticky top-16 z-20">
+        <div class="max-w-7xl mx-auto flex items-center justify-between text-xs">
+            <div id="priceTicker" class="flex items-center space-x-3 px-3.5 py-1.5 rounded-full bg-gray-800/60 border border-gray-700/60 shadow-sm">
+                <div class="flex items-center space-x-1.5">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <span class="font-medium custom-theme-muted">1 BTC =</span>
+                    <span id="btcPricePrimary" class="font-bold text-amber-400">Loading...</span>
+                </div>
+                <span class="text-gray-500">|</span>
+                <div class="flex items-center space-x-1">
+                    <span id="btcPriceSecondary" class="font-semibold text-emerald-400">-- USD</span>
+                </div>
+            </div>
+
+            <div class="hidden sm:flex items-center space-x-2 text-xs custom-theme-muted">
+                <i class="fa-solid fa-chart-line text-amber-500"></i>
+                <span>Live Blockchain & Market Rates</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="drawer" class="fixed inset-0 z-50 overflow-hidden pointer-events-none">
+        <div id="drawerBackdrop" onclick="closeDrawer()" class="drawer-overlay absolute inset-0 bg-black/60 backdrop-blur-sm opacity-0 transition-opacity"></div>
+
+        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div id="drawerPanel" class="drawer-panel w-screen max-w-md custom-theme-card border-l transform translate-x-full shadow-2xl flex flex-col justify-between pointer-events-auto overflow-y-auto">
+                
+                <div class="p-5 border-b custom-theme-card flex items-center justify-between sticky top-0 z-10">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center">
+                            <i class="fa-solid fa-gear text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 data-i18n="menuTitle" class="font-bold text-base">Control Panel & Settings</h3>
+                            <p data-i18n="menuSubtitle" class="text-xs custom-theme-muted">Customize preferences & navigate</p>
+                        </div>
+                    </div>
+                    <button onclick="closeDrawer()" class="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800/60 transition">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="p-6 space-y-6 flex-grow">
+
+                    <div class="space-y-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider custom-theme-muted flex items-center gap-2">
+                            <i class="fa-solid fa-language text-amber-500 text-sm"></i>
+                            <span data-i18n="selectLanguage">Language / Bahasa</span>
+                        </label>
+                        <select id="languageSelect" onchange="changeLanguage(this.value)" class="w-full bg-gray-900/80 text-sm border border-gray-700 text-gray-100 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
+                            <option value="en">🇺🇸 English (Default)</option>
+                            <option value="ms">🇲🇾 Bahasa Malaysia</option>
+                            <option value="id">🇮🇩 Bahasa Indonesia</option>
+                            <option value="th">🇹🇭 ไทย (Thai)</option>
+                            <option value="zh">🇨🇳 中文 (Chinese)</option>
+                            <option value="ja">🇯🇵 日本語 (Japanese)</option>
+                            <option value="ko">🇰🇷 한국어 (Korean)</option>
+                            <option value="hi">🇮🇳 हिन्दी (Hindi)</option>
+                            <option value="ru">🇷🇺 Русский (Russian)</option>
+                            <option value="uk">🇺🇦 Українська (Ukrainian)</option>
+                            <option value="ar">🇦🇪 العربية (Arabic)</option>
+                            <option value="es">🇪🇸 Español (Spanish)</option>
+                            <option value="la">🏛️ Latina (Latin)</option>
+                            <option value="de">🇩🇪 Deutsch (German)</option>
+                            <option value="jv">🇮🇩 Basa Jawa (Javanese)</option>
+                            <option value="fr">🇫🇷 Français (French)</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider custom-theme-muted flex items-center gap-2">
+                            <i class="fa-solid fa-coins text-amber-500 text-sm"></i>
+                            <span data-i18n="selectCurrency">Conversion Currency</span>
+                        </label>
+                        <select id="currencySelect" onchange="changeCurrency(this.value)" class="w-full bg-gray-900/80 text-sm border border-gray-700 text-gray-100 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
+                            <option value="usd">🇺🇸 USD - US Dollar ($)</option>
+                            <option value="eur">🇪🇺 EUR - Euro (€)</option>
+                            <option value="aed">🇦🇪 AED - UAE Dirham (د.إ)</option>
+                            <option value="myr">🇲🇾 MYR - Malaysian Ringgit (RM)</option>
+                            <option value="idr">🇮🇩 IDR - Indonesian Rupiah (Rp)</option>
+                            <option value="sgd">🇸🇬 SGD - Singapore Dollar (S$)</option>
+                            <option value="thb">🇹🇭 THB - Thai Baht (฿)</option>
+                            <option value="cny">🇨🇳 CNY - Chinese Yuan (¥)</option>
+                            <option value="jpy">🇯🇵 JPY - Japanese Yen (¥)</option>
+                            <option value="krw">🇰🇷 KRW - South Korean Won (₩)</option>
+                            <option value="rub">🇷🇺 RUB - Russian Ruble (₽)</option>
+                            <option value="uah">🇺🇦 UAH - Ukrainian Hryvnia (₴)</option>
+                            <option value="inr">🇮🇳 INR - Indian Rupee (₹)</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider custom-theme-muted flex items-center gap-2">
+                            <i class="fa-solid fa-palette text-amber-500 text-sm"></i>
+                            <span data-i18n="selectTheme">Color Theme</span>
+                        </label>
+                        <select id="themeSelect" onchange="changeTheme(this.value)" class="w-full bg-gray-900/80 text-sm border border-gray-700 text-gray-100 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
+                            <option value="dark">🌙 Dark Theme (Default)</option>
+                            <option value="light">☀️ Light Theme</option>
+                            <option value="gold">🏆 Bitcoin Gold</option>
+                            <option value="cyberpunk">⚡ Cyberpunk Neon</option>
+                        </select>
+                    </div>
+
+                    <hr class="border-gray-800">
+
+                    <div class="space-y-1">
+                        <div data-i18n="quickNav" class="text-xs font-semibold uppercase tracking-wider custom-theme-muted mb-2">Quick Navigation</div>
+                        
+                        <a href="#inputSection" onclick="closeDrawer()" class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl hover:bg-amber-500/10 text-sm hover:text-amber-400 transition">
+                            <i class="fa-solid fa-pen-to-square w-5 text-amber-500"></i>
+                            <span data-i18n="navInput">Enter BTC Addresses</span>
+                        </a>
+
+                        <a href="#summarySection" onclick="closeDrawer()" class="flex items-center space-x-3 px-3.5 py-2.5 rounded-xl hover:bg-amber-500/10 text-sm hover:text-amber-400 transition">
+                            <i class="fa-solid fa-chart-pie w-5 text-amber-500"></i>
+                            <span data-i18n="navSummary">Portfolio & Analytics</span>
+                        </a>
+
+                        <button onclick="loadSampleAddresses(); closeDrawer()" class="w-full text-left flex items-center space-x-3 px-3.5 py-2.5 rounded-xl hover:bg-amber-500/10 text-sm hover:text-amber-400 transition">
+                            <i class="fa-solid fa-vial w-5 text-amber-500"></i>
+                            <span data-i18n="navSample">Load Sample Addresses</span>
+                        </button>
+
+                        <button onclick="exportCSV(); closeDrawer()" class="w-full text-left flex items-center space-x-3 px-3.5 py-2.5 rounded-xl hover:bg-amber-500/10 text-sm hover:text-amber-400 transition">
+                            <i class="fa-solid fa-file-csv w-5 text-amber-500"></i>
+                            <span data-i18n="navExport">Export CSV Report</span>
+                        </button>
+                        
+                        <button onclick="openAboutModal(); closeDrawer()" class="w-full text-left flex items-center space-x-3 px-3.5 py-2.5 rounded-xl hover:bg-amber-500/10 text-sm hover:text-amber-400 transition">
+                            <i class="fa-solid fa-circle-info w-5 text-amber-500"></i>
+                            <span data-i18n="navAbout">About Application</span>
+                        </button>
+                    </div>
+
+                </div>
+
+                <div class="p-4 border-t custom-theme-card text-center text-xs custom-theme-muted">
+                    <span data-i18n="appVersion">BTC Balance Tracker v2.5 • Multi-Currency</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
+        
+        <section id="inputSection" class="mb-8">
+            <div class="custom-theme-card rounded-2xl border p-5 sm:p-7 shadow-xl glow-effect transition-all">
+                
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h2 data-i18n="inputTitle" class="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+                            <i class="fa-solid fa-wallet text-amber-500"></i>
+                            Enter Bitcoin Addresses
+                        </h2>
+                        <p data-i18n="inputSubtitle" class="text-sm custom-theme-muted mt-1">
+                            Type or paste up to <span class="font-bold text-amber-500">50 Bitcoin addresses</span> (one per line or comma separated).
+                        </p>
+                    </div>
+
+                    <div class="flex items-center space-x-2 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-lg w-fit">
+                        <i class="fa-solid fa-list-check text-amber-500"></i>
+                        <span class="text-xs font-semibold">
+                            <span data-i18n="countLabel">Addresses</span>: <span id="addressCount" class="text-amber-500 font-bold">0</span> / 50
+                        </span>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <textarea 
+                        id="addressInput" 
+                        rows="6" 
+                        oninput="updateCount()"
+                        placeholder="Example:&#10;1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa&#10;bc1ql49w48q928er3xt2y2mchpt9v02d29025ch9tx&#10;3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy" 
+                        class="w-full bg-gray-900/60 text-gray-100 rounded-xl border border-gray-700/80 p-4 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all shadow-inner resize-y"
+                    ></textarea>
+                    
+                    <button 
+                        onclick="clearInput()" 
+                        title="Clear Text"
+                        class="absolute top-3 right-3 text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1 rounded-md border border-gray-600 transition flex items-center gap-1">
+                        <i class="fa-solid fa-xmark"></i> <span data-i18n="btnClear">Clear</span>
+                    </button>
+                </div>
+
+                <div id="validationAlert" class="hidden mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-xs flex items-center space-x-2">
+                    <i class="fa-solid fa-triangle-exclamation text-base"></i>
+                    <span id="validationMsg" data-i18n="limitWarning">Warning: You have exceeded the limit of 50 addresses!</span>
+                </div>
+
+                <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button 
+                            onclick="loadSampleAddresses()" 
+                            class="px-4 py-2.5 rounded-xl border border-gray-700 bg-gray-800/80 hover:bg-gray-700 text-xs sm:text-sm font-medium transition flex items-center gap-2">
+                            <i class="fa-solid fa-lightbulb text-amber-400"></i>
+                            <span data-i18n="btnSample">Load Sample Data</span>
+                        </button>
+                        
+                        <button 
+                            onclick="clearAll()" 
+                            class="px-4 py-2.5 rounded-xl border border-gray-700 bg-gray-800/80 hover:bg-gray-700 text-xs sm:text-sm font-medium transition flex items-center gap-2 text-gray-400 hover:text-white">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span data-i18n="btnReset">Reset All</span>
+                        </button>
+                    </div>
+
+                    <button 
+                        id="fetchBtn"
+                        onclick="fetchBalances()" 
+                        class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-gray-950 font-bold text-sm sm:text-base shadow-lg shadow-amber-500/25 transition transform active:scale-95 flex items-center gap-2">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span data-i18n="btnCheck">Check Balances Now</span>
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="summarySection" class="mb-8 hidden">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                
+                <div class="custom-theme-card rounded-2xl border p-5 shadow-lg relative overflow-hidden">
+                    <div data-i18n="statTotalBtc" class="text-xs font-semibold custom-theme-muted uppercase tracking-wider mb-1">Total BTC Balance</div>
+                    <div id="totalBtc" class="text-2xl sm:text-3xl font-extrabold text-amber-500">0.00000000</div>
+                    <div id="totalSats" class="text-xs custom-theme-muted mt-1 font-mono">0 Satoshis</div>
+                    <div class="absolute -right-2 -bottom-2 opacity-10 text-amber-500 text-6xl">
+                        <i class="fa-bold fa-bitcoin"></i>
+                    </div>
+                </div>
+
+                <div class="custom-theme-card rounded-2xl border p-5 shadow-lg relative overflow-hidden">
+                    <div data-i18n="statFiatValue" class="text-xs font-semibold custom-theme-muted uppercase tracking-wider mb-1">Estimated Fiat Value</div>
+                    <div id="totalFiat" class="text-2xl sm:text-3xl font-extrabold text-emerald-400">$0.00</div>
+                    <div id="selectedCurrencyLabel" class="text-xs custom-theme-muted mt-1">Live USD rate</div>
+                    <div class="absolute -right-2 -bottom-2 opacity-10 text-emerald-400 text-6xl">
+                        <i class="fa-solid fa-money-bill-wave"></i>
+                    </div>
+                </div>
+
+                <div class="custom-theme-card rounded-2xl border p-5 shadow-lg relative overflow-hidden">
+                    <div data-i18n="statUsdValue" class="text-xs font-semibold custom-theme-muted uppercase tracking-wider mb-1">Value in USD ($)</div>
+                    <div id="totalUsd" class="text-2xl sm:text-3xl font-extrabold text-blue-400">$0.00</div>
+                    <div class="text-xs custom-theme-muted mt-1">Standard Reference</div>
+                    <div class="absolute -right-2 -bottom-2 opacity-10 text-blue-400 text-6xl">
+                        <i class="fa-solid fa-dollar-sign"></i>
+                    </div>
+                </div>
+
+                <div class="custom-theme-card rounded-2xl border p-5 shadow-lg relative overflow-hidden">
+                    <div data-i18n="statActive" class="text-xs font-semibold custom-theme-muted uppercase tracking-wider mb-1">Active Addresses</div>
+                    <div class="flex items-baseline space-x-2">
+                        <span id="activeAddressesCount" class="text-2xl sm:text-3xl font-extrabold text-purple-400">0</span>
+                        <span data-i18n="statWithBalance" class="text-xs custom-theme-muted">with balance</span>
+                    </div>
+                    <div class="text-xs custom-theme-muted mt-1">
+                        <span data-i18n="statOutof">Out of</span> <span id="scannedAddressesCount" class="font-bold">0</span> <span data-i18n="statChecked">checked</span>
+                    </div>
+                    <div class="absolute -right-2 -bottom-2 opacity-10 text-purple-400 text-6xl">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="custom-theme-card rounded-2xl border p-5 shadow-lg mb-8">
+                <h3 data-i18n="chartTitle" class="text-base font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-column text-amber-500"></i>
+                    Top Address Distribution
+                </h3>
+                <div class="h-64 w-full">
+                    <canvas id="balanceChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <section id="resultsSection" class="hidden">
+            <div class="custom-theme-card rounded-2xl border shadow-xl overflow-hidden">
+                
+                <div class="p-4 sm:p-5 border-b custom-theme-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <h3 data-i18n="tableTitle" class="text-lg font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-table-list text-amber-500"></i>
+                            Balance Results
+                        </h3>
+                        <p data-i18n="tableSubtitle" class="text-xs custom-theme-muted">Latest blockchain address queries</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <div class="relative flex-grow sm:flex-grow-0">
+                            <input 
+                                type="text" 
+                                id="tableSearch" 
+                                oninput="filterTable()" 
+                                placeholder="Search address..." 
+                                class="w-full sm:w-48 bg-gray-900/60 border border-gray-700 text-xs rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            >
+                            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-xs text-gray-500"></i>
+                        </div>
+
+                        <button 
+                            onclick="exportCSV()" 
+                            class="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-download"></i> CSV
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-800/40 text-xs uppercase custom-theme-muted border-b border-gray-700/50">
+                                <th class="p-3.5 pl-5">#</th>
+                                <th data-i18n="thAddress" class="p-3.5">Bitcoin Address</th>
+                                <th data-i18n="thType" class="p-3.5">Type</th>
+                                <th data-i18n="thBtc" class="p-3.5 text-right">Balance (BTC)</th>
+                                <th data-i18n="thSats" class="p-3.5 text-right">Satoshis</th>
+                                <th id="thFiatHeader" data-i18n="thFiat" class="p-3.5 text-right">Fiat Value</th>
+                                <th data-i18n="thAction" class="p-3.5 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody" class="divide-y divide-gray-800/50 text-sm">
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </section>
+
+        <div id="loadingState" class="hidden py-16 flex flex-col items-center justify-center text-center">
+            <div class="relative">
+                <div class="w-16 h-16 border-4 border-amber-500/20 border-t-amber-500 rounded-full animate-spin"></div>
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-amber-500">
+                    <i class="fa-bold fa-bitcoin text-xl"></i>
+                </div>
+            </div>
+            <h4 data-i18n="loadingTitle" class="mt-4 font-bold text-base">Fetching Blockchain Data...</h4>
+            <p id="loadingStatusText" data-i18n="loadingSubtitle" class="text-xs custom-theme-muted mt-1">Please wait while we query live Bitcoin balances.</p>
+        </div>
+
+    </main>
+
+    <div id="aboutModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="custom-theme-card max-w-md w-full rounded-2xl border p-6 shadow-2xl relative animate-fade-in">
+            <button onclick="closeAboutModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xl">
+                    <i class="fa-bold fa-bitcoin"></i>
+                </div>
+                <div>
+                    <h3 data-i18n="aboutTitle" class="font-bold text-lg">About BTC Checker</h3>
+                    <p class="text-xs custom-theme-muted">Version 2.5 • Public Explorer</p>
+                </div>
+            </div>
+
+            <p data-i18n="aboutDesc" class="text-xs custom-theme-muted leading-relaxed mb-4">
+                This app allows checking balances for up to 50 public Bitcoin addresses simultaneously using open public APIs from Blockchain.info and Mempool.space, with live multi-fiat exchange rates.
+            </p>
+
+            <ul class="text-xs space-y-2 mb-6">
+                <li class="flex items-center gap-2">
+                    <i class="fa-solid fa-check-circle text-emerald-400"></i>
+                    <span data-i18n="aboutFeature1">100% Secure: No Private Keys ever needed or stored.</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <i class="fa-solid fa-check-circle text-emerald-400"></i>
+                    <span data-i18n="aboutFeature2">Supports Legacy, SegWit, Bech32 & Taproot address formats.</span>
+                </li>
+                <li class="flex items-center gap-2">
+                    <i class="fa-solid fa-check-circle text-emerald-400"></i>
+                    <span data-i18n="aboutFeature3">Live fiat exchange rates for 13 major global currencies.</span>
+                </li>
+            </ul>
+
+            <button onclick="closeAboutModal()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-gray-950 font-bold rounded-xl text-sm transition">
+                <span data-i18n="btnCloseModal">Got it</span>
+            </button>
+        </div>
+    </div>
+
+    <footer class="border-t custom-theme-card py-6 text-center text-xs custom-theme-muted mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div>
+                © 2026 Open BTC Balance Tracker. Donate for supporting via Solana: <strong>78q7TFeP6BDas5g1Eyj9Vr92snTaBTPGQutczXA288eg</strong>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> API Status: Active
+                </span>
+                <button onclick="openAboutModal()" class="hover:text-amber-400 transition" data-i18n="navAbout">About</button>
+            </div>
+        </div>
+    </footer>
+
+    <script src="openbtcbalance.js"></script>
+</body>
+</html>
