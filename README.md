@@ -1,7 +1,9 @@
 # BTC-Balance-Checker v2.5
 BTC Balance Checker and Tracker. New BTC Tracking Tools with Mass Checker up to 50 BTC  address.
 
-Visit Live: https://dlordsociety32.github.io/BTC-Balance-Checker/
+Live Access: https://dlordsociety32.github.io/BTC-Balance-Checker/
+
+Also visit: https://dlordsociety32.github.io/BTC-Tools/
 
 ## Features:
 - Supported Multi Language
